@@ -1,0 +1,34 @@
+/*
+http://colorschemedesigner.com/#0011Ttdk4w0w0
+
+Primary A00E0E
+Darker 782626, 680505
+Lighter CF4141	CF6767
+*/
+
+body {
+  font: 14px 'Open Sans', sans-serif;
+  color: black;
+  margin: 0;
+  font-weight: normal;
+  }
+
+
+.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+.link1 { stroke: #A33; stroke-opacity: 0.7;}
+.link0 { stroke: #BBB; stroke-opacity: 0.5;}
+
+
+d3-tip {
+    line-height: 1;
+    color: black;
+}
+
+.node text {
+  pointer-events: none;
+  font: 9px helvetica;
+}
