@@ -1,10 +1,13 @@
+// ====================================
+// Variables
+// ====================================
 var width = 1400,
     height = 1400;
 
 var force = d3.layout.force()
     .charge(-300)
     .linkStrength( function(edge, i) { if (edge.typ == 0) {return (edge.value);} else {return edge.value/4;} } )
-    .linkDistance( function(edge, i) { if (edge.typ == 0) {return 6;} else {return 128+410/Math.sqrt(edge.value+0.5);} } )
+    .linkDistance( function(edge, i) { if (edge.typ == 0) {return 10;} else {return 128+410/Math.sqrt(edge.value+0.5);} } )
     .gravity(0.1)
     .size([width, height]);
 
@@ -12,7 +15,11 @@ var svg = d3.select("#paperweb").append("svg")
     .attr("width", width)
     .attr("height", height);
 
-d3.json("data/paperweb_barabasi.json", function(error, graph) {
+
+// ====================================
+// JSON call
+// ====================================
+d3.json("data/paperweb_barabasi_a.json", function(error, graph) {
   var nodeMap = {};
     graph.nodes.forEach(function(x) { nodeMap[x.name] = x; });
     graph.links = graph.links.map(function(x) {
@@ -44,8 +51,8 @@ d3.json("data/paperweb_barabasi.json", function(error, graph) {
       .attr("r", function(d) { return Math.sqrt(30+50*(d.yearlast-d.yearfirst)); })
       .style("fill", function(d) { return "#9"+Math.max(Math.min(9-(d.yearlast-2009), 9), 0)+""+Math.max(Math.min(9-(d.yearlast-2009), 9))+""; })
       .call(force.drag)
-      .on('mouseover', tip.show) //Added
-      .on('mouseout', tip.hide); //Added
+      .on('mouseover', tip.show)
+      .on('mouseout', tip.hide);
 
   force.on("tick", function() {
     graph.nodes[0].x = width / 2;
@@ -58,11 +65,13 @@ d3.json("data/paperweb_barabasi.json", function(error, graph) {
 
     node.attr("cx", function(d) { return d.x; })
         .attr("cy", function(d) { return d.y; });
-
   });
 });
 
-//Set up tooltip
+
+// ====================================
+// Tooltip
+// ====================================
 var tip = d3.tip()
     .attr('class', 'd3-tip')
     .offset([-7, 0])
@@ -70,3 +79,4 @@ var tip = d3.tip()
     return  d.fullname + "";
 })
 svg.call(tip);
+

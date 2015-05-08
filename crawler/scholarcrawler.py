@@ -12,7 +12,7 @@ import glob
 import urllib2
 import string
 import re
-import time
+from time import sleep
 import datetime
 from collections import defaultdict
 from random import randint
@@ -35,30 +35,40 @@ def main():
 #
 # optional arguments: -
 
-  rooturl = "http://scholar.google.com"
+  #user = "3kwJhIcAAAAJ" #szell
+  #user = "PL8nGh4AAAAJ" # sinatra
+  user = "vsj2slIAAAAJ" # barabasi
+  excludelargeteams = True
 
-  #user = "3kwJhIcAAAAJ"
-  #user = "PL8nGh4AAAAJ"
-  user = "vsj2slIAAAAJ"
-  #username = "szell"
-  #username = "sinatra"
-  username = "barabasi"
+
+  rooturl = "http://scholar.google.com"
+  # GET USERNAME
+  cstart = 0
+  url = rooturl + "/citations?hl=en&user=" + user + "&view_op=list_works&pagesize=100&view_op=list_works&sortby=pubdate&cstart=" + str(cstart)
+  response = urllib2.urlopen(url, timeout=3)
+  htmldoc = response.read()
+  soup = BeautifulSoup(htmldoc, "lxml")
+  namediv = soup.find("div", { "id" : "gsc_prf_in" }).getText()
+  username, userfullname = getname(namediv)
+  careerstart = 2015
+  careerend = 0
 
   # GET PUBLICATIONS
-  with open("../data/paperweb_" + username + ".json", "a") as jsonfile:
+  with open("../data/paperweb_" + username + ".json", "w") as jsonfile:
 
-    print "Retrieving paperweb of user " + username + " (" + user + ")"
+    print "Retrieving PaperWeb of user " + userfullname + " (" + user + ")"
     publications = []
     coauthors = set()
     links1 = dict() # links between user and coauthor
     links0 = dict() # links between coauthors
 
-    cstart = 0
     while True:
-      url = rooturl + "/citations?hl=en&user=" + user + "&view_op=list_works&pagesize=100&view_op=list_works&sortby=pubdate&cstart=" + str(cstart)
-      response = urllib2.urlopen(url, timeout=3)
-      htmldoc = response.read()
-      soup = BeautifulSoup(htmldoc, "lxml")
+      sleep(2)
+      if cstart != 0:
+        url = rooturl + "/citations?hl=en&user=" + user + "&view_op=list_works&pagesize=100&view_op=list_works&sortby=pubdate&cstart=" + str(cstart)
+        response = urllib2.urlopen(url, timeout=3)
+        htmldoc = response.read()
+        soup = BeautifulSoup(htmldoc, "lxml")
 
       anchors = soup.findAll('a')
       links = [a['href'] for a in anchors if a.has_attr('href')]
@@ -68,26 +78,38 @@ def main():
       divcontents = divcontents[0:-1:2]
       yearspans = soup.findAll("span", { "class" : "gsc_a_h" })
       paperyears = [row.text for row in yearspans]
-      paperyears =paperyears[1:-1]
-      for t,y in zip(divcontents, paperyears):
+      paperyears = paperyears[1:-1]
+      paperlinks = soup.findAll("a", { "class" : "gsc_a_at" })
+      paperlinks = [a['href'] for a in paperlinks if a.has_attr('href')]
+
+      for t,y,pl in zip(divcontents, paperyears, paperlinks):
+        careerstart = min([careerstart, int(y)])
+        careerend = max([careerend, int(y)])
         # get authors
         coauthors_thispaper = set()
         authors = t.split(',')
+        # check for "...". If so, we can go a level deeper to retrieve all coauthors
+        if not(excludelargeteams) and " ..." in authors:
+          sleep(1)
+          urlpaper = rooturl + pl
+          responsepaper = urllib2.urlopen(urlpaper, timeout=3)
+          htmldocpaper = responsepaper.read()
+          souppaper = BeautifulSoup(htmldocpaper, "lxml")
+          t = souppaper.find("div", { "class" : "gsc_value" })
+          t = t.text
+          authors = t.split(',')
         for a in authors:
-          aparts = a.strip()
-          aparts = aparts.split(' ')
-          if len(aparts) == 2:
-            newauthor = unidecode(strip_accents(aparts[1].lower())) # casefold would be better for gross
-            if newauthor != username:
-              coauthors.add(newauthor)
-              coauthors_thispaper.add(newauthor)
-              # add to links1
-              if newauthor in links1:
-                links1[newauthor]["value"] += 1
-                links1[newauthor]["yearfirst"] = min([links1[newauthor]["yearfirst"], y])
-                links1[newauthor]["yearlast"] = max([links1[newauthor]["yearlast"], y])
-              else:
-                links1[newauthor] = {"value": 1, "yearfirst": y, "yearlast": y}
+          newauthor, fullname = getname(a)
+          if newauthor and newauthor != username:
+            coauthors.add(newauthor)
+            coauthors_thispaper.add(newauthor)
+            # add to links1
+            if newauthor in links1:
+              links1[newauthor]["value"] += 1
+              links1[newauthor]["yearfirst"] = min([links1[newauthor]["yearfirst"], y])
+              links1[newauthor]["yearlast"] = max([links1[newauthor]["yearlast"], y])
+            else:
+              links1[newauthor] = {"value": 1, "yearfirst": y, "yearlast": y, "fullname": fullname}
 
         # we need to connect all coauthors to each other
         if len(coauthors_thispaper) >= 2:
@@ -115,10 +137,10 @@ def main():
     #print links0
     #print links1
     finaljson = dict()
-    finaljson["nodes"] = [{"name":username, "group":1, "fullname": username, "yearfirst":2010, "yearlast":2015}]
+    finaljson["nodes"] = [{"name":username, "group":1, "fullname": userfullname, "yearfirst":careerstart, "yearlast":careerend}]
     for link1 in links1:
       try:
-        finaljson["nodes"].append({"name":link1, "group":2, "fullname": link1, "yearfirst":int(links1[link1]["yearfirst"]), "yearlast":int(links1[link1]["yearlast"])})
+        finaljson["nodes"].append({"name":link1, "group":2, "fullname": links1[link1]["fullname"], "yearfirst":int(links1[link1]["yearfirst"]), "yearlast":int(links1[link1]["yearlast"])})
       except:
         pass
     finaljson["links"] = []
@@ -137,6 +159,16 @@ def main():
     json.dump(finaljson, jsonfile)
   sys.exit("Planned Stop.")
 
+
+def getname(a):
+  aparts = a.strip()
+  aparts = aparts.split(' ')
+  if len(aparts) >= 2:
+    fullname = unidecode(strip_accents(aparts[0][0])) + ". " + unidecode(strip_accents(aparts[-1])).title()
+    lastname = unidecode(strip_accents(aparts[-1].lower())) + "_" + unidecode(strip_accents(aparts[0][0]).lower()) # casefold would be better for gross
+    return lastname, fullname;
+  else:
+    return False, False
 
 def strip_accents(s):
   return ''.join(c for c in unicodedata.normalize('NFD', s)
