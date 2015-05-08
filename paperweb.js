@@ -8,11 +8,11 @@ var force = d3.layout.force()
     .gravity(0.1)
     .size([width, height]);
 
-var svg = d3.select("#collabnet").append("svg")
+var svg = d3.select("#paperweb").append("svg")
     .attr("width", width)
     .attr("height", height);
 
-d3.json("data/barabasi_paperweb.json", function(error, graph) {
+d3.json("data/paperweb_barabasi.json", function(error, graph) {
   var nodeMap = {};
     graph.nodes.forEach(function(x) { nodeMap[x.name] = x; });
     graph.links = graph.links.map(function(x) {
