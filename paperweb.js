@@ -2,7 +2,8 @@
 // Variables
 // ====================================
 var width = 1400,
-    height = 1400;
+    height = 1400,
+    padding = 1.5;
 
 var force = d3.layout.force()
     .charge(-300)
@@ -21,17 +22,17 @@ var svg = d3.select("#paperweb").append("svg")
 // ====================================
 d3.json("data/paperweb_barabasi_a.json", function(error, graph) {
   var nodeMap = {};
-    graph.nodes.forEach(function(x) { nodeMap[x.name] = x; });
-    graph.links = graph.links.map(function(x) {
-      return {
-        source: nodeMap[x.source],
-        target: nodeMap[x.target],
-        value: x.value,
-        typ: x.typ,
-        yearfirst: x.yearfirst,
-        yearlast: x.yearlast
-      };
-    });
+  graph.nodes.forEach(function(x) { nodeMap[x.name] = x; });
+  graph.links = graph.links.map(function(x) {
+    return {
+      source: nodeMap[x.source],
+      target: nodeMap[x.target],
+      value: x.value,
+      typ: x.typ,
+      yearfirst: x.yearfirst,
+      yearlast: x.yearlast
+    };
+  });
 
   force
       .nodes(graph.nodes)
@@ -65,6 +66,8 @@ d3.json("data/paperweb_barabasi_a.json", function(error, graph) {
 
     node.attr("cx", function(d) { return d.x; })
         .attr("cy", function(d) { return d.y; });
+
+    node.each(collide(graph.nodes, 0.3));
   });
 });
 
@@ -80,3 +83,33 @@ var tip = d3.tip()
 })
 svg.call(tip);
 
+
+// ====================================
+// Collision detection
+// ====================================
+function collide(nodes, alpha) {
+  var quadtree = d3.geom.quadtree(nodes);
+  return function(d) {
+    var rb = 2*(Math.sqrt(30+50*(d.yearlast-d.yearfirst))) + padding, // would be nice if we didn't have to re-compute the radius here. no idea how to pass it over unfortunately.
+        nx1 = d.x - rb,
+        nx2 = d.x + rb,
+        ny1 = d.y - rb,
+        ny2 = d.y + rb;
+    
+    quadtree.visit(function(quad, x1, y1, x2, y2) {
+      if (quad.point && (quad.point !== d)) {
+        var x = d.x - quad.point.x,
+            y = d.y - quad.point.y,
+            l = Math.sqrt(x * x + y * y);
+          if (l < rb) {
+          l = (l - rb) / l * alpha;
+          d.x -= x *= l;
+          d.y -= y *= l;
+          quad.point.x += x;
+          quad.point.y += y;
+        }
+      }
+      return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+    });
+  };
+}

@@ -37,7 +37,8 @@ def main():
 
   #user = "3kwJhIcAAAAJ" #szell
   #user = "PL8nGh4AAAAJ" # sinatra
-  user = "vsj2slIAAAAJ" # barabasi
+  #user = "vsj2slIAAAAJ" # barabasi
+  user = "jXTPa_AAAAAJ" # latora
   excludelargeteams = True
 
 
@@ -63,7 +64,7 @@ def main():
     links0 = dict() # links between coauthors
 
     while True:
-      sleep(2)
+      sleep(10)
       if cstart != 0:
         url = rooturl + "/citations?hl=en&user=" + user + "&view_op=list_works&pagesize=100&view_op=list_works&sortby=pubdate&cstart=" + str(cstart)
         response = urllib2.urlopen(url, timeout=3)
@@ -126,8 +127,8 @@ def main():
             else:
               links0[pset] = {"value": 1, "yearfirst": y, "yearlast": y}
 
-      if cstart == 200:
-        break
+      #if cstart == 200:
+      #  break
       if htmldoc.find('id="gsc_bpf_next" aria-label="Next" class') != -1: # otherwise it is disabled
         cstart += 100  # Next page
       else:
