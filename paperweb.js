@@ -69,6 +69,17 @@ d3.json("data/paperweb_barabasi_a.json", function(error, graph) {
 
     node.each(collide(graph.nodes, 0.3));
   });
+
+  var optArray = [];
+  for (var i = 0; i < graph.nodes.length - 1; i++) {
+      optArray.push(graph.nodes[i].name);
+  }
+  optArray = optArray.sort();
+  $(function () {
+      $("#search").autocomplete({
+          source: optArray
+      });
+  });
 });
 
 
@@ -112,4 +123,27 @@ function collide(nodes, alpha) {
       return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
     });
   };
+}
+
+
+// ====================================
+// Search
+// ====================================
+function searchNode() {
+    //find the node
+    var selectedVal = document.getElementById('search').value;
+    var node = svg.selectAll(".node");
+    if (selectedVal == "none") {
+        node.style("stroke", "white").style("stroke-width", "1");
+    } else {
+        var selected = node.filter(function (d, i) {
+            return d.name != selectedVal;
+        });
+        selected.style("opacity", "0");
+        var link = svg.selectAll(".link0, .link1")
+        link.style("opacity", "0.05");
+        d3.selectAll(".node, .link0, .link1").transition()
+            .duration(4000)
+            .style("opacity", 1);
+    }
 }

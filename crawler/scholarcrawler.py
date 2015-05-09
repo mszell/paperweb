@@ -12,6 +12,7 @@ import glob
 import urllib2
 import string
 import re
+from datetime import date
 from time import sleep
 import datetime
 from collections import defaultdict
@@ -37,8 +38,8 @@ def main():
 
   #user = "3kwJhIcAAAAJ" #szell
   #user = "PL8nGh4AAAAJ" # sinatra
-  #user = "vsj2slIAAAAJ" # barabasi
-  user = "jXTPa_AAAAAJ" # latora
+  user = "vsj2slIAAAAJ" # barabasi
+  #user = "jXTPa_AAAAAJ" # latora
   excludelargeteams = True
 
 
@@ -51,7 +52,7 @@ def main():
   soup = BeautifulSoup(htmldoc, "lxml")
   namediv = soup.find("div", { "id" : "gsc_prf_in" }).getText()
   username, userfullname = getname(namediv)
-  careerstart = 2015
+  careerstart = date.today().year
   careerend = 0
 
   # GET PUBLICATIONS
@@ -84,48 +85,49 @@ def main():
       paperlinks = [a['href'] for a in paperlinks if a.has_attr('href')]
 
       for t,y,pl in zip(divcontents, paperyears, paperlinks):
-        careerstart = min([careerstart, int(y)])
-        careerend = max([careerend, int(y)])
-        # get authors
-        coauthors_thispaper = set()
-        authors = t.split(',')
-        # check for "...". If so, we can go a level deeper to retrieve all coauthors
-        if not(excludelargeteams) and " ..." in authors:
-          sleep(1)
-          urlpaper = rooturl + pl
-          responsepaper = urllib2.urlopen(urlpaper, timeout=3)
-          htmldocpaper = responsepaper.read()
-          souppaper = BeautifulSoup(htmldocpaper, "lxml")
-          t = souppaper.find("div", { "class" : "gsc_value" })
-          t = t.text
+        if y != '': # drop papers that do not have a publication year
+          careerstart = min([careerstart, int(y)])
+          careerend = max([careerend, int(y)])
+          # get authors
+          coauthors_thispaper = set()
           authors = t.split(',')
-        for a in authors:
-          newauthor, fullname = getname(a)
-          if newauthor and newauthor != username:
-            coauthors.add(newauthor)
-            coauthors_thispaper.add(newauthor)
-            # add to links1
-            if newauthor in links1:
-              links1[newauthor]["value"] += 1
-              links1[newauthor]["yearfirst"] = min([links1[newauthor]["yearfirst"], y])
-              links1[newauthor]["yearlast"] = max([links1[newauthor]["yearlast"], y])
-            else:
-              links1[newauthor] = {"value": 1, "yearfirst": y, "yearlast": y, "fullname": fullname}
+          # check for "...". If so, we can go a level deeper to retrieve all coauthors
+          if not(excludelargeteams) and " ..." in authors:
+            sleep(1)
+            urlpaper = rooturl + pl
+            responsepaper = urllib2.urlopen(urlpaper, timeout=3)
+            htmldocpaper = responsepaper.read()
+            souppaper = BeautifulSoup(htmldocpaper, "lxml")
+            t = souppaper.find("div", { "class" : "gsc_value" })
+            t = t.text
+            authors = t.split(',')
+          for a in authors:
+            newauthor, fullname = getname(a)
+            if newauthor and newauthor != username:
+              coauthors.add(newauthor)
+              coauthors_thispaper.add(newauthor)
+              # add to links1
+              if newauthor in links1:
+                links1[newauthor]["value"] += 1
+                links1[newauthor]["yearfirst"] = min([links1[newauthor]["yearfirst"], y])
+                links1[newauthor]["yearlast"] = max([links1[newauthor]["yearlast"], y])
+              else:
+                links1[newauthor] = {"value": 1, "yearfirst": y, "yearlast": y, "fullname": fullname}
 
-        # we need to connect all coauthors to each other
-        if len(coauthors_thispaper) >= 2:
-          temp = combinations(coauthors_thispaper, 2)
-          authorpairs = []
-          for p in temp:
-            authorpairs.append(p)
-          for p in authorpairs:
-            pset = frozenset(p)
-            if pset in links0:
-              links0[pset]["value"] += 1
-              links0[pset]["yearfirst"] = min([links0[pset]["yearfirst"], y])
-              links0[pset]["yearlast"] = max([links0[pset]["yearlast"], y])
-            else:
-              links0[pset] = {"value": 1, "yearfirst": y, "yearlast": y}
+          # we need to connect all coauthors to each other
+          if len(coauthors_thispaper) >= 2:
+            temp = combinations(coauthors_thispaper, 2)
+            authorpairs = []
+            for p in temp:
+              authorpairs.append(p)
+            for p in authorpairs:
+              pset = frozenset(p)
+              if pset in links0:
+                links0[pset]["value"] += 1
+                links0[pset]["yearfirst"] = min([links0[pset]["yearfirst"], y])
+                links0[pset]["yearlast"] = max([links0[pset]["yearlast"], y])
+              else:
+                links0[pset] = {"value": 1, "yearfirst": y, "yearlast": y}
 
       #if cstart == 200:
       #  break
